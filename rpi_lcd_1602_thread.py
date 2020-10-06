@@ -4,15 +4,18 @@
 # Date: 04.09.2020.
 # Repo: https://github.com/etfovac/rpi_lcd
 # SW: Python 3.7.3
-# HW: Pi Model 3B  V1.2, LCD 1602 module (HD44780, 5V, Blue backlight, 16 chars, 2 lines)
+# HW: Pi Model 3B  V1.2, LCD 1602 module (HD44780, 5V, Blue backlight, 16 chars, 2 lines), Bi-Polar NPN Transistor (2N3904 or eq)
 
 # https://learn.adafruit.com/character-lcds/python-circuitpython
+# https://www.mbtechworks.com/projects/drive-an-lcd-16x2-display-with-raspberry-pi.html
 # https://www.rototron.info/using-an-lcd-display-with-inputs-interrupts-on-raspberry-pi/
 # https://www.rototron.info/lcd-display-tutorial-for-raspberry-pi/#downloads
 # https://www.raspberrypi-spy.co.uk/2012/07/16x2-lcd-module-control-using-python/
+# https://www.elprocus.com/lcd-16x2-pin-configuration-and-its-working/
 # https://learn.adafruit.com/drive-a-16x2-lcd-directly-with-a-raspberry-pi/python-code
 # https://bogotobogo.com/python/Multithread/python_multithreading_Event_Objects_between_Threads.php
 # https://pypi.org/project/pynput/
+# https://components101.com/transistors/bc548-npn-transistor
 
 import board
 import digitalio
@@ -27,9 +30,6 @@ import sys
 import threading
 from pynput import keyboard
 
-def interrupt_signal_handler(sig, frame):
-    print('Program exiting...')
-    sys.exit(0)
 
 lcd_columns = 16
 lcd_rows = 2
@@ -37,8 +37,7 @@ lcd_rows = 2
 plt_id = platform.uname()
 ts_form = "%b %d  %H:%M:%S"
 bts = datetime.datetime.fromtimestamp(psutil.boot_time()).strftime(ts_form)
-degree = chr(223)
-
+degree = chr(223) # spec. char for °
 def lcd_setup():
     global lcd
     # Raspberry Pi Pin Config:
@@ -48,18 +47,22 @@ def lcd_setup():
     lcd_d6 = digitalio.DigitalInOut(board.D6)
     lcd_d5 = digitalio.DigitalInOut(board.D5)
     lcd_d4 = digitalio.DigitalInOut(board.D22)
-    #lcd_backlight = digitalio.DigitalInOut(board.D27)
-    # get a transistor BC547 and use Base to switch on/off the LED backlight
+    lcd_backlight = digitalio.DigitalInOut(board.D27)
+    # a NPN transistor's Base switches the LED backlight on/off
 
     # Initialise the lcd class
     lcd = characterlcd.Character_LCD_Mono(
         lcd_rs, lcd_en,
         lcd_d4, lcd_d5, lcd_d6, lcd_d7,
-        lcd_columns, lcd_rows #, lcd_backlight
+        lcd_columns, lcd_rows, lcd_backlight
     )
 
     lcd.text_direction = lcd.LEFT_TO_RIGHT
-    #lcd.backlight = True
+    lcd.backlight = True
+    lcd.clear()
+    lcd.blink = True
+    lcd.message = "Blink!"
+    lcd.cursor = True
 
 def lcd_msg(line1,line2="",form1="",form2=""):
     global lcd
@@ -74,7 +77,7 @@ def lcd_msg(line1,line2="",form1="",form2=""):
     msg_str = msg_form.format(line1,line2)
     lcd.clear()
     lcd.message = msg_str
-    #print(lcd.message)
+    print(lcd.message)
     return msg_str
 
 def get_ip():
@@ -157,18 +160,27 @@ lcd_event_print = threading.Event()
 
 def on_press(key):
     global lcd_event_print # couldn't add param to this callback
-    if key == keyboard.Key.ctrl: lcd_event_print.set()
+    if key == keyboard.Key.page_down: lcd_event_print.set()
 #     try:
 #         print('alphanumeric key {0} pressed'.format(key.char))
 #     except AttributeError:
 #         print('special key {0} pressed'.format(key))
 def on_release(key):
-#     print('{0} released'.format(key))
+    
     if key == keyboard.Key.esc:
         # Stop listener
+        print('{0} released - Stopping the keyboard listener'.format(key))
         return False
         
 def main():
+    
+    def interrupt_signal_handler(sig, frame):
+        print('Program exiting...')
+        listener.stop()
+        lcd.backlight = False # Turns off the LED backlight
+        
+        sys.exit(0)
+    
     lcd_setup()
     
     #lcd_thread = threading.Thread(target=lcd_printout, args=())
@@ -179,6 +191,7 @@ def main():
     
     listener = keyboard.Listener(on_press=on_press, on_release=on_release)
     listener.start()
+    listener.wait()
     
     signal.signal(signal.SIGINT, interrupt_signal_handler) #Terminal interrupt signal
     signal.pause()
