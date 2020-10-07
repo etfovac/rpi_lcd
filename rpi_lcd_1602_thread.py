@@ -22,24 +22,20 @@ import digitalio
 import adafruit_character_lcd.character_lcd as characterlcd
 from time import sleep, strftime
 import datetime
-import subprocess
-import platform
+
+
 import psutil
 import signal
-import sys
 import threading
 from pynput import keyboard
+import sys
+import os
+sys.path.append(os.path.abspath(".."))
+import config.printout_info as cpi
+import config.printout_format as cpf
 
 
-lcd_columns = 16
-lcd_rows = 2
-
-plt_id = platform.uname()
-ts_form = "%b %d  %H:%M:%S"
-bts = datetime.datetime.fromtimestamp(psutil.boot_time()).strftime(ts_form)
-degree = chr(223) # spec. char for °
-def lcd_setup():
-    global lcd
+def lcd_setup(lcd_columns = 16,lcd_rows = 2):
     # Raspberry Pi Pin Config:
     lcd_rs = digitalio.DigitalInOut(board.D26)
     lcd_en = digitalio.DigitalInOut(board.D19)
@@ -49,145 +45,98 @@ def lcd_setup():
     lcd_d4 = digitalio.DigitalInOut(board.D22)
     lcd_backlight = digitalio.DigitalInOut(board.D27)
     # a NPN transistor's Base switches the LED backlight on/off
-
-    # Initialise the lcd class
+       
+    # Init lcd class obj
     lcd = characterlcd.Character_LCD_Mono(
         lcd_rs, lcd_en,
         lcd_d4, lcd_d5, lcd_d6, lcd_d7,
         lcd_columns, lcd_rows, lcd_backlight
     )
-
     lcd.text_direction = lcd.LEFT_TO_RIGHT
     lcd.backlight = True
     lcd.clear()
     lcd.blink = True
-    lcd.message = "Blink!"
+    lcd_msg(lcd,"<Setup>...")
     lcd.cursor = True
+    msg_list = cpi.lcd_msg_list(lcd_columns, lcd_rows)
+    return lcd, msg_list
 
-def lcd_msg(line1,line2="",form1="",form2=""):
-    global lcd
-    if type(line1) is tuple:
-        line2 = line1[1]
-        line1 = line1[0]
-    if form1=="": form1="{}"
-    if form2=="": form2="{}"
-    line1 = form1.format(line1)[:lcd_columns]
-    line2 = form2.format(line2)[:lcd_columns]
-    msg_form = "{}\n{}"
-    msg_str = msg_form.format(line1,line2)
+def lcd_msg(lcd,msg_str):
     lcd.clear()
+    sleep(0.1)
     lcd.message = msg_str
     print(lcd.message)
-    return msg_str
 
-def get_ip():
-    # "{} IP address".format(subprocess.getoutput("hostname -I"))
-    # iwconfig wlan0 # info iwgetid
-    # ethtool eth0 # ethtool -i eth0
-    # ifconfig lo
-    if psutil.net_if_stats()['wlan0'].isup:
-        ip_addr = psutil.net_if_addrs()['wlan0'][0].address
-        ip_net = subprocess.getoutput("iwgetid -r")
-    elif psutil.net_if_stats()['eth0'].isup:
-        ip_addr = psutil.net_if_addrs()['eth0'][0].address
-        ip_net = "LAN eth0"
-    elif psutil.net_if_stats()['lo'].isup:
-        ip_addr = psutil.net_if_addrs()['lo'][0].address #127.0.0.1
-        ip_net = "Loopback"
-    else:
-        ip_addr = "0.0.0.0"
-        ip_net = "all net if down"
-    return ip_addr, ip_net #tuple
-
-def get_wlan():
-    # iwlist wlan0 freq # iwlist wlan0 scan
-    # iwlist wlan0 rate # iwlist rate
-    # iwgetid --protocol wlan0 -r
-    # iwgetid --scheme wlan0 -r
-    if psutil.net_if_stats()['wlan0'].isup:
-        freq = float(subprocess.getoutput("iwgetid --freq wlan0 -r"))/1e9
-        chnl = int(subprocess.getoutput("iwgetid --channel wlan0 -r"))
-    else:
-        freq = 0
-        chnl = 0
-    return freq, chnl #tuple
-
-def lcd_timestamp():
-        cts = datetime.datetime.now().strftime(ts_form)
-        lcd_msg(bts,cts)
-        #sleep(1) # event timeout solves this
-        # Sep 04  12:32:53
-        # Sep 04  15:02:38
-
-def lcd_printout():
+def lcd_printout(lcd,msg_list,delay):
+    #print(msg_list)
     try:
-        lcd_ribbon()
-        sleep(1)
-        lcd_msg(plt_id.system,plt_id.node, "OS {}")
-        sleep(2)
-        lcd_msg(plt_id.release,plt_id.machine, "rel {}", "chip  {}")
-        sleep(2)
-        lcd_msg(get_ip(), "", "{} IP", "{} ID")
-        sleep(2)
-        lcd_msg(get_wlan(), "", "CFreq {} GHz", "WLAN Channel {}")
-        sleep(2)
-        #lcd_timestamp()
-        #sleep(1)
-        lcd_msg("CPU {} %".format(psutil.cpu_percent()),"CPU {} {}C".format(psutil.sensors_temperatures()['cpu_thermal'][0].current, degree))
-        sleep(2)
-        lcd_msg(psutil.virtual_memory().percent,psutil.swap_memory().percent,"Virt MEM {} %","Swap MEM {} %")
-        sleep(2)
-        lcd_ribbon()
+        for msg in msg_list:
+            lcd_msg(lcd,msg)
+            sleep(delay)
     except KeyboardInterrupt: 
-        print('CTRL-C pressed. Printout cancelled. Press CTRL-C to stop execution.')
+        print('<CTRL-C> Printout cancelled. Press CTRL-C to stop execution.')
 
-def lcd_ribbon():
-    lcd_msg(">"*lcd_columns,"<"*lcd_columns)
-    
-def lcd_printout_timeout(event,timeout_sec):
+def lcd_printout_timeout(lcd,msg_list,event,timeout_sec):
+    # Triggered on event timeout
     cntr=0
     while not event.isSet():
         cntr+=cntr
         #print(cntr) #=0 => e.wait works
         event_is_set = event.wait(timeout_sec)
         if event_is_set:
-            lcd_printout()
+            lcd_printout(lcd,msg_list,1.5)
             event.clear() # clear isSet flag in event
         else:
-            lcd_timestamp()
+            lcd_msg(lcd,cpf.msg_form(cpi.lcd_timestamp()[0:2]))
+            
+def lcd_printout_timeout2(lcd,msg_list,event,timeout_sec):
+    # Triggered on event timeout
+    while not event.isSet():
+        event_is_set = event.wait(timeout_sec)
+        if not(event_is_set): # periodic remainder
+            lcd_printout(lcd,msg_list,3)
 
 lcd_event_print = threading.Event()
+lcd_event_print2 = threading.Event() # not used
 
 def on_press(key):
     global lcd_event_print # couldn't add param to this callback
+    # Keyboard interupt triggers thread event:
     if key == keyboard.Key.page_down: lcd_event_print.set()
+
 #     try:
 #         print('alphanumeric key {0} pressed'.format(key.char))
 #     except AttributeError:
 #         print('special key {0} pressed'.format(key))
+
 def on_release(key):
-    
     if key == keyboard.Key.esc:
-        # Stop listener
         print('{0} released - Stopping the keyboard listener'.format(key))
         return False
         
 def main():
     
-    def interrupt_signal_handler(sig, frame):
-        print('Program exiting...')
+    def interrupt_signal_handler(signum, frame):
+        print('Interrupt signal ' + str(signum) +
+              ' on line ' + str(frame.f_lineno) +
+              ' in ' + frame.f_code.co_filename)
         listener.stop()
         lcd.backlight = False # Turns off the LED backlight
-        
         sys.exit(0)
     
-    lcd_setup()
+    [lcd,msg_lists] = lcd_setup()
     
     #lcd_thread = threading.Thread(target=lcd_printout, args=())
     #lcd_thread.start()
-    timeout_sec = 1
-    lcd_thread_tout = threading.Thread(name='non-blocking', target=lcd_printout_timeout, args=(lcd_event_print,timeout_sec))
-    lcd_thread_tout.start()
+    timeout_sec = [1,6]
+    lcd_thread = threading.Thread(name='non-blocking',
+                                       target = lcd_printout_timeout,
+                                       args = (lcd,msg_lists[0],lcd_event_print,timeout_sec[0]))
+    lcd_thread2 = threading.Thread(name='non-blocking',
+                                       target = lcd_printout_timeout2,
+                                       args = (lcd,msg_lists[1],lcd_event_print2,timeout_sec[1]))
+    lcd_thread.start()
+    lcd_thread2.start()
     
     listener = keyboard.Listener(on_press=on_press, on_release=on_release)
     listener.start()

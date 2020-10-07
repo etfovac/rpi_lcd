@@ -1,0 +1,62 @@
+<Setup>...
+Oct 06  17:53:24
+Oct 07  03:09:01
+Oct 06  17:53:24
+Oct 07  03:09:02
+Oct 06  17:53:24
+Oct 07  03:09:03
+Oct 06  17:53:24
+Oct 07  03:09:04
+Oct 06  17:53:24
+Oct 07  03:09:05
+<PageDn> Info
+<Ctrl+C> Exit
+Oct 06  17:53:24
+Oct 07  03:09:06
+Oct 06  17:53:24
+Oct 07  03:09:08
+Oct 06  17:53:24
+Oct 07  03:09:09
+Oct 06  17:53:24
+Oct 07  03:09:10
+Oct 06  17:53:24
+Oct 07  03:09:11
+Oct 06  17:53:24
+Oct 07  03:09:12
+Oct 06  17:53:24
+Oct 07  03:09:13
+Oct 06  17:53:24
+Oct 07  03:09:15
+<PageDn> Info
+<Ctrl+C> Exit
+Oct 06  17:53:24
+Oct 07  03:09:16
+>>>>>>>>>>>>>>>>
+<<<<<<<<<<<<<<<<
+OS Linux
+raspberrypi
+rel 5.4.51-v7+
+chip  armv7l
+192.168.0.28 IP
+pathfinder_1 ID
+CFreq 2.467 GHz
+WLAN Channel 12
+<PageDn> Info
+<Ctrl+C> Exit
+CPU 20.4 %
+CPU 49.926 ßC
+Virt MEM 34.2 %
+Swap MEM 24.0 %
+>>>>>>>>>>>>>>>>
+<<<<<<<<<<<<<<<<
+Oct 06  17:53:24
+Oct 07  03:09:31
+Oct 06  17:53:24
+Oct 07  03:09:32
+<PageDn> Info
+<Ctrl+C> Exit
+Oct 06  17:53:24
+Oct 07  03:09:33
+Oct 06  17:53:24
+Oct 07  03:09:34
+Interrupt signal 2 on line 146 in /home/pi/Playground/rpi_lcd/rpi_lcd/rpi_lcd_1602_thread.py
