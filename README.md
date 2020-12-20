@@ -10,6 +10,9 @@
 > LCD 1602 module, NPN transistors, potenciometer, resistors  
 > Python callbacks, events & threading
 
+### HW Layout and connections  
+<img src="./graphics/RPi%20IR.png" alt="RPi IR LCD Layout">
+
 ### Table of Contents (Wiki)
 [Wiki Home](https://github.com/etfovac/rpi_lcd/wiki)  
 [Overview](https://github.com/etfovac/rpi_lcd/wiki/Overview)  
