@@ -10,17 +10,6 @@ import config.printout_format as cpf
 plt_id = platform.uname()
 degree = chr(223) # spec. char for ° for LCD
 
-ts_form = "%b %d  %H:%M:%S"
-bt = datetime.datetime.fromtimestamp(psutil.boot_time())
-def lcd_timestamp():
-    bts = bt.strftime(ts_form)
-    ct = datetime.datetime.now()
-    cts = ct.strftime(ts_form)
-        # Sep 04  12:32:53
-        # Sep 04  15:02:38
-    upt = ct - bt # datetime.timedelta
-    return bts,cts,str(upt)
-
 def get_ip():
     # "{} IP address".format(subprocess.getoutput("hostname -I"))
     # iwconfig wlan0 # info iwgetid

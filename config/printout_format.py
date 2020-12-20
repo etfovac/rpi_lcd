@@ -14,4 +14,4 @@ def lcd_ribbon(lcd_columns=16, lcd_rows=2):
     return msg_form(">"*lcd_columns,"<"*lcd_columns)
 
 def lcd_info():
-    return msg_form("<PageDn> Info","<Ctrl+C> Exit")
+    return msg_form("<Insert> Info","<End> Exit")
